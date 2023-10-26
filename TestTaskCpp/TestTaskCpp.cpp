@@ -7,52 +7,88 @@
 using namespace std;
 
 mutex mtx;
-string cmd;
-STARTUPINFO si;
-PROCESS_INFORMATION pi;
-wchar_t wcmd_current[256] = L"";
+mutex mtx2;
 
-void getData(string proccessName[3])
+void getStatus(bool a)
 {
-    system("cls");
-    for (int i = 0; i < 3; i++)
-    {
-        ZeroMemory(&si, sizeof(si));
-        si.cb = sizeof(si);
-        ZeroMemory(&pi, sizeof(pi));
-        cmd = "sc query " + proccessName[i];
-        MultiByteToWideChar(CP_ACP, 0, cmd.c_str(), -1, wcmd_current, 256);
-        CreateProcess(NULL, wcmd_current, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi);
-        WaitForSingleObject(pi.hProcess, INFINITE);
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-    }
-    this_thread::sleep_for(chrono::seconds(1));
-    getData(proccessName);
+    mtx2.lock();
+    if (a)
+        cout << "\t Id:" << this_thread::get_id() << " Start proccess \n";
+    else
+        cout << "\t Id:" << this_thread::get_id() << " End proccess \n";
+    mtx2.unlock();
 }
 
-void openServices(string proccessName)
+void commonResource()
 {
     mtx.lock();
-
-    cout << this_thread::get_id() << endl;
-    proccessName = "net start " + proccessName;
-    system(proccessName.c_str());
-    
+    this_thread::sleep_for(chrono::milliseconds(3000)); // что-то долго и упорно делает
     mtx.unlock();
-};
+}
+
+int firstProcess(int a,int b)
+{
+    this_thread::sleep_for(chrono::milliseconds(2000)); // имитация запуска процесса 1
+    getStatus(true); // вывод данных о запуске
+    a = a + b; // предположим тут выполнение каких то сложных математических операций
+    commonResource(); // предположим тут выполняется какая-то общая задача для каждого процесса (это может быть например конвертация данных в нужный формат или запись в БД)
+    getStatus(false); // вывод данных об окончании
+    return a;
+}
+
+int secondProcess(int a, int b)
+{
+    this_thread::sleep_for(chrono::milliseconds(2000)); // имитация запуска процесса 1
+    getStatus(true);
+    a = a - b;
+    commonResource();
+    getStatus(false);
+    return a;
+}
+
+int thirdProcess(int a, int b)
+{
+    this_thread::sleep_for(chrono::milliseconds(2000)); // имитация запуска процесса 1
+    getStatus(true);
+    a = a * b;
+    commonResource();
+    getStatus(false);
+    return a;
+}
 
 int main()
 {
     setlocale(0,"");
-    string proccessName[3] = { "aspnet_state","Schedule" ,"RasAuto" };
-    thread t1(openServices, proccessName[0]);
-    thread t2(openServices, proccessName[1]);
-    thread t3(openServices, proccessName[2]);
-    t1.join();
-    t2.join();
-    t3.join();
 
-    getData(proccessName);    
+    // Запуская в многопоточном режиме происходит экономия 6-ти секунд на выполнение запуска процессов, а так же на расчеты
+    int sum = 0;
+    int diff = 0;
+    int mult = 0;
+
+    thread thread1([&sum]() {
+        sum = firstProcess(2,5);
+        });
+    thread thread2([&diff]() {
+        diff = secondProcess(2, 5);
+        });
+    thread thread3([&mult]() {
+        mult = thirdProcess(2, 5);
+        });
+
+    for (int i = 0; i < 15; i++)
+    {
+        cout << "main thread is working" << endl;
+        this_thread::sleep_for(chrono::milliseconds(1000));
+    }
+       
+    thread1.join();
+    thread2.join();
+    thread3.join();
+
+    cout << "=======================" << endl;
+    cout << "сумма: " << sum << endl;
+    cout << "разность: " << diff << endl;
+    cout << "произведение: " << mult << endl;
+
     return 0;
 }
