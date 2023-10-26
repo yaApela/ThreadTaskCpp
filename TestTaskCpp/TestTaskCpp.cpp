@@ -1,8 +1,6 @@
 ﻿#include <iostream>
 #include <thread>
 #include <mutex>
-#include <windows.h>
-#include <vector>
 #include <chrono>
 using namespace std;
 
